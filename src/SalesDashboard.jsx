@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Target, Award, Trophy, Star, Zap, Sparkles, RefreshCw } from 'lucide-react';
+// import { TrendingUp, Target, Award, Trophy, Star, Zap, Sparkles, RefreshCw } from 'lucide-react';
+import { TrendingUp, Target, Trophy, Star, Sparkles, RefreshCw } from 'lucide-react';
+
 
 const SalesDashboard = () => {
   const [data, setData] = useState({
