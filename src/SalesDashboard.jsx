@@ -1,50 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Target, Award, Trophy, Star, Zap, Sparkles } from 'lucide-react';
+import { TrendingUp, Target, Award, Trophy, Star, Zap, Sparkles, RefreshCw } from 'lucide-react';
 
 const SalesDashboard = () => {
   const [data, setData] = useState({
-    teams: [
-      { name: 'Sales A', amount: 1500000 },
-      { name: 'Sales B', amount: 2100000 },
-      { name: 'Sales C', amount: 1800000 },
-      { name: 'Sales D', amount: 1200000 },
-      { name: 'Sales E', amount: 1600000 },
-      { name: 'Sales F', amount: 900000 }
-    ],
-    lastUpdate: new Date().toISOString()
+    teams: [],
+    lastUpdate: new Date().toISOString(),
+    loading: true,
+    error: null
   });
   
   const [showConfetti, setShowConfetti] = useState(false);
   const [lastMilestone, setLastMilestone] = useState(0);
   const [floatingShapes, setFloatingShapes] = useState([]);
   
-  const TARGET = 10000000;
+  const TARGET = 10000000; 
+  const DEADLINE = new Date('2025-11-30T23:59:59');
+  
+  // Google Sheets CSV URL
+  const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-xZM6xxrwv_XRmlLEi5PHnF5JX6QXloLTKk9HlH5WKgX08KESJFzBEbPPWtmOuBHmq-Gf4Evdusm3/pub?gid=0&single=true&output=csv';
+  
   const blueGradients = [
     'from-blue-400 via-blue-500 to-blue-600',
     'from-cyan-400 via-blue-500 to-indigo-600',
     'from-sky-400 via-blue-500 to-blue-700',
     'from-blue-300 via-cyan-400 to-blue-600',
     'from-indigo-400 via-blue-500 to-blue-600',
-    'from-blue-500 via-sky-500 to-cyan-600'
+    'from-blue-500 via-sky-500 to-cyan-600',
+    'from-blue-400 via-indigo-500 to-blue-600',
+    'from-cyan-300 via-blue-400 to-indigo-500',
+    'from-sky-300 via-cyan-500 to-blue-600'
   ];
   
-  // Simulate data fetching
-  useEffect(() => {
-    const interval = setInterval(() => {
+  // Fetch data from Google Sheets CSV
+  const fetchSheetData = async () => {
+    try {
+      setData(prev => ({ ...prev, loading: true, error: null }));
+      
+      const response = await fetch(SHEET_CSV_URL);
+      const csvText = await response.text();
+      
+      // Parse CSV (simple parser for 2 columns)
+      const lines = csvText.trim().split('\n');
+      const teams = [];
+      
+      // Skip header row and parse data rows
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Split by comma, handling quoted values
+        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        if (matches && matches.length >= 2) {
+          const name = matches[0].replace(/^"|"$/g, '').trim();
+          const amountStr = matches[1].replace(/^"|"$/g, '').trim();
+          const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+          
+          if (name && !isNaN(amount) && amount > 0) {
+            teams.push({ name, amount });
+          }
+        }
+      }
+      
+      // Sort by amount in descending order
+      teams.sort((a, b) => b.amount - a.amount);
+      
+      setData({
+        teams,
+        lastUpdate: new Date().toISOString(),
+        loading: false,
+        error: null
+      });
+    } catch (error) {
+      console.error('Error fetching sheet data:', error);
       setData(prev => ({
         ...prev,
-        lastUpdate: new Date().toISOString()
+        loading: false,
+        error: 'Failed to load data from Google Sheets. Please check the connection.'
       }));
-    }, 5000);
-    
+    }
+  };
+  
+  // Initial fetch and auto-refresh every 60 seconds
+  useEffect(() => {
+    fetchSheetData();
+    const interval = setInterval(fetchSheetData, 60000);
     return () => clearInterval(interval);
   }, []);
   
   // Calculate totals
   const totalAmount = data.teams.reduce((sum, team) => sum + team.amount, 0);
   const totalPercent = (totalAmount / TARGET) * 100;
-  const rankedTeams = [...data.teams].sort((a, b) => b.amount - a.amount);
-  const topPerformer = rankedTeams[0];
+  const topPerformer = data.teams[0];
+  
+  // Calculate days remaining
+  const now = new Date();
+  const daysRemaining = Math.ceil((DEADLINE - now) / (1000 * 60 * 60 * 24));
   
   // Milestone celebrations
   useEffect(() => {
@@ -78,8 +128,12 @@ const SalesDashboard = () => {
     }).format(amount);
   };
   
+  // Split teams into left and right columns
+  const leftTeams = data.teams.slice(0, Math.ceil(data.teams.length / 2));
+  const rightTeams = data.teams.slice(Math.ceil(data.teams.length / 2));
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 overflow-auto relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-3 overflow-auto relative">
       {/* Animated Background Geometric Shapes */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
         {floatingShapes.map(shape => (
@@ -135,253 +189,256 @@ const SalesDashboard = () => {
       )}
       
       {/* Header with Animation */}
-      <div className="text-center mb-6 relative">
+      <div className="text-center mb-4 relative">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-96 h-96 bg-blue-400 rounded-full blur-3xl opacity-20 animate-pulse-slow"></div>
         </div>
         <div className="relative">
-          <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
-            Dashboard
+          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
+            ProTouch
           </h1>
           <div className="flex items-center justify-center gap-2 mt-2">
             <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
             <p className="text-blue-600 text-sm font-semibold animate-fade-in">
               Last Updated: {new Date(data.lastUpdate).toLocaleString('en-IN')}
             </p>
+            <button 
+              onClick={fetchSheetData}
+              className="ml-2 p-1 hover:bg-blue-100 rounded-full transition-colors"
+              disabled={data.loading}
+            >
+              <RefreshCw className={`w-4 h-4 text-blue-600 ${data.loading ? 'animate-spin' : ''}`} />
+            </button>
             <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
           </div>
+          {data.error && (
+            <div className="mt-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-2 rounded-lg inline-block">
+              {data.error}
+            </div>
+          )}
         </div>
       </div>
       
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-        {/* Overall Progress Card */}
-        <div className="group bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 border-2 border-blue-200 relative overflow-hidden hover:shadow-blue-500/50 transition-all duration-500 hover:scale-[1.02]">
-          {/* Animated Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-40 h-40 bg-blue-500 rounded-full blur-3xl animate-blob"></div>
-            <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
-            <div className="absolute bottom-0 left-1/2 w-40 h-40 bg-indigo-500 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-12 transition-transform duration-500">
-                <Target className="w-8 h-8 text-white animate-pulse" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">Overall Progress</h2>
-                <p className="text-blue-600 text-sm font-semibold">Target: {formatCurrency(TARGET)}</p>
-              </div>
-            </div>
+      {/* Main Layout: Left Teams | Center Total | Right Teams */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3 items-start">
+        {/* LEFT COLUMN - First Half of Teams */}
+        <div className="space-y-2.5">
+          {leftTeams.map((team, index) => {
+            const percent = (team.amount / TARGET) * 100;
+            const actualIndex = index;
+            const getMedal = () => {
+              if (actualIndex === 0) return { emoji: '🥇' };
+              if (actualIndex === 1) return { emoji: '🥈' };
+              if (actualIndex === 2) return { emoji: '🥉' };
+              return { emoji: `${actualIndex + 1}` };
+            };
+            const medal = getMedal();
             
-            <div className="mb-4 text-center">
-              <div className="text-6xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent mb-2 animate-pulse-slow">
-                {totalPercent.toFixed(1)}%
-              </div>
-              <div className="text-2xl text-blue-700 font-bold">{formatCurrency(totalAmount)}</div>
-            </div>
-            
-            <div className="relative h-12 bg-gradient-to-r from-blue-100 via-cyan-100 to-indigo-100 rounded-full overflow-hidden shadow-inner">
+            return (
               <div
-                className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-indigo-600 rounded-full transition-all duration-2000 ease-out relative"
-                style={{ width: `${Math.min(totalPercent, 100)}%` }}
+                key={team.name}
+                className="group relative bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/30 rounded-xl p-3.5 shadow-lg border border-blue-200/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 animate-slide-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
-                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-black text-sm drop-shadow-lg px-2 py-1 bg-blue-900/30 rounded-full backdrop-blur-sm">
-                  {formatCurrency(totalAmount)} / {formatCurrency(TARGET)}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Corner Decoration */}
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full opacity-10 blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-        </div>
-        
-        {/* Top Performer Card */}
-        <div className="group relative bg-gradient-to-br from-blue-600 via-cyan-600 to-indigo-700 rounded-3xl shadow-2xl p-6 text-white overflow-hidden hover:shadow-blue-500/80 transition-all duration-500 hover:scale-[1.02]">
-          {/* Geometric Pattern Background */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 right-10 w-32 h-32 border-4 border-white rounded-full animate-spin-slow"></div>
-            <div className="absolute bottom-10 left-10 w-24 h-24 border-4 border-white transform rotate-45 animate-bounce-slow"></div>
-            <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse"></div>
-          </div>
-          
-          <div className="relative z-10 flex flex-col items-center justify-center text-center h-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-500 shadow-lg">
-                <Trophy className="w-8 h-8 text-yellow-300 animate-bounce-slow" />
-              </div>
-              <div className="text-left">
-                <h2 className="text-2xl font-black">Top Performer</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <Zap className="w-5 h-5 text-yellow-300 animate-pulse" fill="#FDE047" />
-                  <span className="text-sm font-semibold">Leading the Pack!</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <div className="text-6xl font-black mb-3 animate-float bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent">
-                {topPerformer.name}
-              </div>
-              <div className="text-5xl font-black mb-2 text-yellow-300 animate-pulse-slow">{formatCurrency(topPerformer.amount)}</div>
-              <div className="text-2xl font-bold opacity-90">
-                {((topPerformer.amount / TARGET) * 100).toFixed(1)}% of Target
-              </div>
-            </div>
-            
-            <div className="flex justify-center gap-2">
-              {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  className="w-8 h-8 text-yellow-300 animate-bounce" 
-                  fill="#FDE047"
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                />
-              ))}
-            </div>
-          </div>
-          
-          {/* Glow Effect */}
-          <div className="absolute -top-20 -left-20 w-60 h-60 bg-cyan-400 rounded-full blur-3xl opacity-30 group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-indigo-400 rounded-full blur-3xl opacity-30 group-hover:scale-150 transition-transform duration-700"></div>
-        </div>
-      </div>
-      
-      {/* Team Performance Section */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 border-2 border-blue-200 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle, #3B82F6 1px, transparent 1px)',
-            backgroundSize: '30px 30px'
-          }}></div>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg animate-pulse-slow">
-                <Award className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">Team Performance</h2>
-            </div>
-            <div className="text-lg font-bold text-blue-600 flex items-center gap-2">
-              <span className="animate-pulse">6 Teams 🚀</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {rankedTeams.map((team, index) => {
-              const percent = (team.amount / TARGET) * 100;
-              const getMedal = () => {
-                if (index === 0) return { emoji: '🥇', gradient: 'from-yellow-400 via-yellow-500 to-amber-600', text: 'Gold', glow: 'shadow-yellow-500/50' };
-                if (index === 1) return { emoji: '🥈', gradient: 'from-gray-300 via-gray-400 to-gray-500', text: 'Silver', glow: 'shadow-gray-400/50' };
-                if (index === 2) return { emoji: '🥉', gradient: 'from-orange-400 via-orange-500 to-amber-600', text: 'Bronze', glow: 'shadow-orange-500/50' };
-                return { emoji: `#${index + 1}`, gradient: blueGradients[index], text: `Rank ${index + 1}`, glow: 'shadow-blue-500/50' };
-              };
-              const medal = getMedal();
-              
-              return (
-                <div
-                  key={team.name}
-                  className="group relative bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/30 rounded-xl p-4 shadow-lg border border-blue-200/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {/* Animated background on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-cyan-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  
-                  <div className="relative z-10">
-                    {/* Medal/Rank Badge */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-16 h-16 rounded-lg flex items-center justify-center text-3xl font-black shadow-md group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-                        {medal.emoji}
-                      </div>
-                      <TrendingUp className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
-                    </div>
-                    
-                    {/* Team Name - Centered */}
-                    <div className="text-center mb-3">
-                      <h3 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-1 animate-float">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-cyan-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`${actualIndex < 3 ? 'text-5xl' : 'text-3xl'} font-black transition-all duration-300`}>{medal.emoji}</div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
                         {team.name}
                       </h3>
-                      <p className="text-xs font-bold text-blue-600">{medal.text} Position</p>
-                    </div>
-                    
-                    {/* Amount - Centered */}
-                    <div className="mb-3 text-center">
-                      <div className="text-2xl font-black text-blue-700 mb-0.5">
-                        {formatCurrency(team.amount)}
-                      </div>
-                      <div className="text-sm font-bold text-blue-500">
-                        {percent.toFixed(1)}% of Target
-                      </div>
-                    </div>
-                    
-                    {/* Enhanced Progress Bar */}
-                    <div className="relative h-8 bg-gradient-to-r from-slate-100 via-blue-50 to-cyan-50 rounded-xl overflow-hidden shadow-inner border border-blue-100/50">
-                      {/* Background Pattern */}
-                      <div className="absolute inset-0 opacity-20" style={{
-                        backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(59, 130, 246, 0.1) 10px, rgba(59, 130, 246, 0.1) 20px)'
-                      }}></div>
-                      
-                      {/* Progress Fill */}
-                      <div
-                        className={`relative h-full bg-gradient-to-r ${blueGradients[index]} rounded-xl transition-all duration-1500 ease-out shadow-lg`}
-                        style={{ width: `${percent}%` }}
-                      >
-                        {/* Shimmer Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
-                        
-                        {/* Glossy Top Edge */}
-                        <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent rounded-t-xl"></div>
-                        
-                        {/* Animated Dots */}
-                        <div className="absolute inset-0 flex items-center px-2">
-                          <div className="flex gap-1">
-                            {[...Array(3)].map((_, i) => (
-                              <div
-                                key={i}
-                                className="w-1 h-1 bg-white rounded-full animate-pulse"
-                                style={{ animationDelay: `${i * 0.2}s` }}
-                              ></div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Progress Percentage Text */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-black text-blue-900 drop-shadow-sm bg-white/60 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                          {percent.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Remaining Amount */}
-                    <div className="mt-2 text-xs text-blue-600 font-semibold flex items-center justify-between">
-                      <span>Remaining:</span>
-                      <span className="text-blue-700">{formatCurrency(TARGET - team.amount)}</span>
+                      <TrendingUp className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
                     </div>
                   </div>
                   
-                  {/* Corner decoration */}
-                  {index < 3 && (
-                    <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-gradient-to-br from-blue-300 to-cyan-400 rounded-full opacity-10 group-hover:scale-150 group-hover:opacity-20 transition-all duration-500"></div>
-                  )}
+                  <div className="mb-2">
+                    <div className="text-2xl font-black text-blue-700">
+                      {formatCurrency(team.amount)}
+                    </div>
+                    <div className="text-sm font-bold text-blue-500">
+                      {percent.toFixed(1)}% of Target
+                    </div>
+                  </div>
+                  
+                  <div className="relative h-7 bg-gradient-to-r from-slate-100 via-blue-50 to-cyan-50 rounded-full overflow-hidden shadow-inner border border-blue-100">
+                    <div
+                      className={`h-full bg-gradient-to-r ${blueGradients[actualIndex]} rounded-full transition-all duration-1500 ease-out relative shadow-lg`}
+                      style={{ width: `${percent}%` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+                      <div className="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* CENTER COLUMN - Overall Progress & Top Performer */}
+        <div className="space-y-3">
+          {/* Overall Progress Card */}
+          <div className="group bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-5 border-2 border-blue-200 relative overflow-hidden hover:shadow-blue-500/50 transition-all duration-500">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-40 h-40 bg-blue-500 rounded-full blur-3xl animate-blob"></div>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+            </div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-12 transition-transform duration-500">
+                  <Target className="w-7 h-7 text-white animate-pulse" />
+                </div>
+                <div className="text-center">
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">Team Progress</h2>
+                  <p className="text-blue-600 text-xs font-semibold">Target: {formatCurrency(TARGET)}</p>
+                </div>
+              </div>
+              
+              <div className="mb-3 text-center">
+                <div className="text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent mb-1 animate-pulse-slow">
+                  {totalPercent.toFixed(1)}%
+                </div>
+                <div className="text-xl text-blue-700 font-bold">{formatCurrency(totalAmount)}</div>
+                <div className="mt-1 text-xs font-bold text-blue-600">
+                  {daysRemaining > 0 ? `${daysRemaining} days remaining` : 'Deadline passed'}
+                </div>
+              </div>
+              
+              <div className="relative h-10 bg-gradient-to-r from-blue-100 via-cyan-100 to-indigo-100 rounded-full overflow-hidden shadow-inner border border-blue-200">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-indigo-600 rounded-full transition-all duration-2000 ease-out relative shadow-lg"
+                  style={{ width: `${Math.min(totalPercent, 100)}%` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+                  <div className="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg animate-bounce-slow"></div>
+                </div>
+              </div>
+              
+              <div className="mt-2 text-center text-xs font-bold text-blue-600">
+                Remaining: {formatCurrency(TARGET - totalAmount)}
+              </div>
+            </div>
           </div>
+          
+          {/* Top Performer Card */}
+          {topPerformer && (
+            <div className="group relative bg-gradient-to-br from-blue-600 via-cyan-600 to-indigo-700 rounded-3xl shadow-2xl p-5 text-white overflow-hidden hover:shadow-blue-500/80 transition-all duration-500">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-10 right-10 w-32 h-32 border-4 border-white rounded-full animate-spin-slow"></div>
+                <div className="absolute bottom-10 left-10 w-24 h-24 border-4 border-white transform rotate-45 animate-bounce-slow"></div>
+              </div>
+              
+              <div className="relative z-10 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Trophy className="w-7 h-7 text-yellow-300 animate-bounce-slow" />
+                  <h2 className="text-2xl font-black">Top Performer</h2>
+                </div>
+                
+                <div className="mb-2">
+                  <div className="text-3xl font-black mb-1 animate-float bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent">
+                    {topPerformer.name}
+                  </div>
+                  <div className="text-2xl font-black mb-1 text-yellow-300">{formatCurrency(topPerformer.amount)}</div>
+                  <div className="text-base font-bold opacity-90">
+                    {((topPerformer.amount / TARGET) * 100).toFixed(1)}% of Target
+                  </div>
+                </div>
+                
+                <div className="flex justify-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      className="w-6 h-6 text-yellow-300 animate-bounce" 
+                      fill="#FDE047"
+                      style={{ animationDelay: `${i * 0.1}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* RIGHT COLUMN - Second Half of Teams */}
+        <div className="space-y-2.5">
+          {rightTeams.map((team, index) => {
+            const percent = (team.amount / TARGET) * 100;
+            const actualIndex = leftTeams.length + index;
+            const getMedal = () => {
+              if (actualIndex === 0) return { emoji: '🥇' };
+              if (actualIndex === 1) return { emoji: '🥈' };
+              if (actualIndex === 2) return { emoji: '🥉' };
+              return { emoji: `${actualIndex + 1}` };
+            };
+            const medal = getMedal();
+            
+            return (
+              <div
+                key={team.name}
+                className="group relative bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/30 rounded-xl p-3.5 shadow-lg border border-blue-200/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 animate-slide-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-cyan-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`${actualIndex < 3 ? 'text-5xl' : 'text-3xl'} font-black transition-all duration-300`}>{medal.emoji}</div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                        {team.name}
+                      </h3>
+                      <TrendingUp className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <div className="text-2xl font-black text-blue-700">
+                      {formatCurrency(team.amount)}
+                    </div>
+                    <div className="text-sm font-bold text-blue-500">
+                      {percent.toFixed(1)}% of Target
+                    </div>
+                  </div>
+                  
+                  <div className="relative h-7 bg-gradient-to-r from-slate-100 via-blue-50 to-cyan-50 rounded-full overflow-hidden shadow-inner border border-blue-100">
+                    <div
+                      className={`h-full bg-gradient-to-r ${blueGradients[actualIndex]} rounded-full transition-all duration-1500 ease-out relative shadow-lg`}
+                      style={{ width: `${percent}%` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+                      <div className="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
       
       <style>{`
+        @keyframes slide-in {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.5s ease-out forwards;
+          opacity: 0;
+        }
+        
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
