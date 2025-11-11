@@ -518,6 +518,10 @@ const SalesDashboard = () => {
           to { opacity: 1; }
         }
       `}</style>
+           <footer className="bg-[#001f4d] text-white text-center py-3 text-sm fixed bottom-0 left-0 w-full">
+             © 2025 Protouchpro Services Private Limited — All Rights Reserved
+           </footer>
+
     </div>
   );
 };
