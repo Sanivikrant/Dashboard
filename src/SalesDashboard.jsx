@@ -196,7 +196,7 @@ const SalesDashboard = () => {
           <div className="w-96 h-96 bg-blue-400 rounded-full blur-3xl opacity-20 animate-pulse-slow"></div>
         </div>
         <div className="relative">
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
+          <h1 className="text-8xl md:text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
             ProTouch
           </h1>
           <div className="flex items-center justify-center gap-2 mt-2">
@@ -248,7 +248,7 @@ const SalesDashboard = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className={`${actualIndex < 3 ? 'text-5xl' : 'text-3xl'} font-black transition-all duration-300`}>{medal.emoji}</div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                      <h3 className="text-5xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
                         {team.name}
                       </h3>
                       <TrendingUp className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
@@ -256,7 +256,7 @@ const SalesDashboard = () => {
                   </div>
                   
                   <div className="mb-2">
-                    <div className="text-2xl font-black text-blue-700">
+                    <div className="text-4xl font-black text-blue-700">
                       {formatCurrency(team.amount)}
                     </div>
                     <div className="text-sm font-bold text-blue-500">
@@ -295,16 +295,16 @@ const SalesDashboard = () => {
                   <Target className="w-7 h-7 text-white animate-pulse" />
                 </div>
                 <div className="text-center">
-                  <h2 className="text-3xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">Team Progress</h2>
+                  <h2 className="text-5xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">Team Progress</h2>
                   <p className="text-blue-600 text-xs font-semibold">Target: {formatCurrency(TARGET)}</p>
                 </div>
               </div>
               
               <div className="mb-3 text-center">
-                <div className="text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent mb-1 animate-pulse-slow">
+                <div className="text-9xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent mb-1 animate-pulse-slow">
                   {totalPercent.toFixed(1)}%
                 </div>
-                <div className="text-xl text-blue-700 font-bold">{formatCurrency(totalAmount)}</div>
+                <div className="text-5xl text-blue-700 font-bold">{formatCurrency(totalAmount)}</div>
                 <div className="mt-1 text-xs font-bold text-blue-600">
                   {daysRemaining > 0 ? `${daysRemaining} days remaining` : 'Deadline passed'}
                 </div>
@@ -338,14 +338,14 @@ const SalesDashboard = () => {
               <div className="relative z-10 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Trophy className="w-7 h-7 text-yellow-300 animate-bounce-slow" />
-                  <h2 className="text-2xl font-black">Top Performer</h2>
+                  <h2 className="text-4xl font-black">Top Performer</h2>
                 </div>
                 
                 <div className="mb-2">
-                  <div className="text-3xl font-black mb-1 animate-float bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent">
+                  <div className="text-6xl font-black mb-1 animate-float bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent">
                     {topPerformer.name}
                   </div>
-                  <div className="text-2xl font-black mb-1 text-yellow-300">{formatCurrency(topPerformer.amount)}</div>
+                  <div className="text-4xl font-black mb-1 text-yellow-300">{formatCurrency(topPerformer.amount)}</div>
                   <div className="text-base font-bold opacity-90">
                     {((topPerformer.amount / TARGET) * 100).toFixed(1)}% of Target
                   </div>
@@ -391,7 +391,7 @@ const SalesDashboard = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className={`${actualIndex < 3 ? 'text-5xl' : 'text-3xl'} font-black transition-all duration-300`}>{medal.emoji}</div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-2xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                      <h3 className="text-5xl font-black bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
                         {team.name}
                       </h3>
                       <TrendingUp className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
@@ -399,7 +399,7 @@ const SalesDashboard = () => {
                   </div>
                   
                   <div className="mb-2">
-                    <div className="text-2xl font-black text-blue-700">
+                    <div className="text-4xl font-black text-blue-700">
                       {formatCurrency(team.amount)}
                     </div>
                     <div className="text-sm font-bold text-blue-500">
