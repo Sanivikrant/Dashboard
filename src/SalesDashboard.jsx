@@ -15,6 +15,13 @@ const SalesDashboard = () => {
   const [lastMilestone, setLastMilestone] = useState(0);
   const [floatingShapes, setFloatingShapes] = useState([]);
   
+  // Latest Sale Popup State
+  const [latestSale, setLatestSale] = useState(null);
+  const [showSalePopup, setShowSalePopup] = useState(false);
+  const [previousSaleId, setPreviousSaleId] = useState(null);
+  const [salePopupTimer, setSalePopupTimer] = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  
   const TARGET = 10000000; 
   const DEADLINE = new Date('2025-11-30T23:59:59');
   
@@ -23,6 +30,9 @@ const SalesDashboard = () => {
   
   // Individual Sales CSV URL
   const INDIVIDUAL_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTr8BTA9HBgjurHo5H88_1uhm-cSkGuXTDYckX2-OEam0dsTstCjognbDucJYO0_J12yXq2R-Glz_C/pub?output=csv';
+  
+  // Latest Sale CSV URL
+  const LATEST_SALE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBFBzEUlrB3DqGGi7GLXMsunmqFbxn1kzmYEI9qBTCFxz7YIcjTAGJegeoANT0F6uL39K6hQb6tsP/pub?output=csv';
   
   const blueGradients = [
     'from-blue-400 via-blue-500 to-blue-600',
@@ -123,12 +133,105 @@ const SalesDashboard = () => {
     }
   };
   
+  // Fetch Latest Sale Data
+  const fetchLatestSale = async () => {
+    try {
+      const response = await fetch(LATEST_SALE_CSV_URL);
+      const csvText = await response.text();
+      
+      const lines = csvText.trim().split('\n');
+      if (lines.length < 2) {
+        console.log('No data rows in latest sale sheet');
+        return;
+      }
+      
+      // Get the last row (most recent sale)
+      const lastLine = lines[lines.length - 1].trim();
+      if (!lastLine) {
+        console.log('Last line is empty');
+        return;
+      }
+      
+      console.log('Latest sale row:', lastLine);
+      
+      // Parse the CSV line - Format: Name, Program
+      const parts = lastLine.split(',');
+      
+      if (parts.length >= 2) {
+        const salesperson = parts[0].replace(/^"|"$/g, '').trim();
+        const program = parts[1].replace(/^"|"$/g, '').trim();
+        
+        if (!salesperson || !program) {
+          console.log('Missing Counsellor or program');
+          return;
+        }
+        
+        // Create a unique ID for this sale (using salesperson + program + row number)
+        const saleId = `${lines.length}-${salesperson}-${program}`;
+        
+        console.log('Current sale ID:', saleId);
+        console.log('Previous sale ID:', previousSaleId);
+        
+        // Check if this is a new sale (or first time with data)
+        if (saleId !== previousSaleId) {
+          console.log('NEW SALE DETECTED!');
+          
+          // New sale detected!
+          const newSale = {
+            id: saleId,
+            salesperson,
+            program,
+            timestamp: new Date().toISOString()
+          };
+          
+          setLatestSale(newSale);
+          
+          // Clear any existing popup timer
+          if (salePopupTimer) {
+            clearTimeout(salePopupTimer);
+          }
+          
+          // Show the popup and celebration
+          setShowSalePopup(true);
+          setShowCelebration(true);
+          
+          // Set timer to hide popup after 25 seconds
+          const timer = setTimeout(() => {
+            setShowSalePopup(false);
+            setShowCelebration(false);
+          }, 25000);
+          
+          setSalePopupTimer(timer);
+        }
+        
+        // Always update the previous sale ID (even on first load)
+        setPreviousSaleId(saleId);
+      } else {
+        console.log('Not enough columns in CSV');
+      }
+    } catch (error) {
+      console.error('Error fetching latest sale:', error);
+    }
+  };
+  
   // Initial fetch and auto-refresh every 60 seconds
   useEffect(() => {
     fetchSheetData();
     const interval = setInterval(fetchSheetData, 60000);
     return () => clearInterval(interval);
   }, []);
+  
+  // Fetch latest sale every 60 seconds for testing (change to 300000 for production)
+  useEffect(() => {
+    fetchLatestSale(); // Initial fetch
+    const interval = setInterval(fetchLatestSale, 60000); // 30 seconds (use 300000 for 5 minutes in production)
+    return () => {
+      clearInterval(interval);
+      if (salePopupTimer) {
+        clearTimeout(salePopupTimer);
+      }
+    };
+  }, [salePopupTimer]);
   
   // Calculate totals including Independent Sales
   const teamTotal = data.teams.reduce((sum, team) => sum + team.amount, 0);
@@ -230,6 +333,167 @@ const SalesDashboard = () => {
             </div>
           ))}
         </div>
+      )}
+      
+      {/* LATEST SALE POPUP WITH FULL PAGE CELEBRATION */}
+      {showSalePopup && latestSale && (
+        <>
+          {/* Full Page Celebration Effects */}
+          {showCelebration && (
+            <div className="fixed inset-0 pointer-events-none z-40">
+              {/* Falling Flowers */}
+              {[...Array(20)].map((_, i) => (
+                <div
+                  key={`flower-${i}`}
+                  className="absolute animate-fall-flower"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: '-50px',
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${3 + Math.random() * 2}s`
+                  }}
+                >
+                  <div className="text-4xl" style={{ filter: 'drop-shadow(0 0 10px rgba(255,192,203,0.8))' }}>
+                    {['🌸', '🌺', '🌼', '🌻', '🌷'][Math.floor(Math.random() * 5)]}
+                  </div>
+                </div>
+              ))}
+              
+              {/* Sparkling Stars */}
+              {[...Array(30)].map((_, i) => (
+                <div
+                  key={`star-${i}`}
+                  className="absolute animate-twinkle"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${1 + Math.random() * 2}s`
+                  }}
+                >
+                  <Star className="w-6 h-6 text-yellow-400" fill="#FBBF24" />
+                </div>
+              ))}
+              
+              {/* Firecrackers */}
+              {[...Array(15)].map((_, i) => (
+                <div
+                  key={`firecracker-${i}`}
+                  className="absolute animate-explode"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 60}%`,
+                    animationDelay: `${Math.random() * 5}s`
+                  }}
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                    <div className="text-4xl">🎆</div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Colorful Confetti Burst */}
+              {[...Array(100)].map((_, i) => {
+                const colors = ['bg-pink-500', 'bg-yellow-400', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500'];
+                const shapes = ['rounded-full', 'rounded-sm', 'rounded-lg'];
+                return (
+                  <div
+                    key={`confetti-${i}`}
+                    className="absolute animate-confetti-burst"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 30}%`,
+                      animationDelay: `${Math.random() * 1}s`,
+                      animationDuration: `${2 + Math.random() * 3}s`
+                    }}
+                  >
+                    <div className={`w-3 h-3 ${colors[Math.floor(Math.random() * colors.length)]} ${shapes[Math.floor(Math.random() * shapes.length)]}`}></div>
+                  </div>
+                );
+              })}
+              
+              {/* Sparkles */}
+              {[...Array(40)].map((_, i) => (
+                <div
+                  key={`sparkle-${i}`}
+                  className="absolute animate-sparkle"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 4}s`
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Central Popup */}
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="relative bg-gradient-to-br from-white via-pink-50 to-purple-50 rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 border-4 border-pink-300 animate-popup-bounce">
+              {/* Corner Sparkles */}
+              <div className="absolute -top-4 -left-4 text-6xl animate-bounce-slow">✨</div>
+              <div className="absolute -top-4 -right-4 text-6xl animate-bounce-slow" style={{ animationDelay: '0.5s' }}>✨</div>
+              <div className="absolute -bottom-4 -left-4 text-6xl animate-bounce-slow" style={{ animationDelay: '1s' }}>✨</div>
+              <div className="absolute -bottom-4 -right-4 text-6xl animate-bounce-slow" style={{ animationDelay: '1.5s' }}>✨</div>
+              
+              {/* Glowing Background */}
+              <div className="absolute inset-0 opacity-30 rounded-4xl overflow-hidden">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-pink-400 rounded-full blur-3xl animate-blob"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-0 left-1/2 w-32 h-32 bg-yellow-400 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
+              </div>
+              
+              <div className="relative z-10 text-center">
+                {/* Trophy Icon */}
+                <div className="flex justify-center mb-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-yellow-400 rounded-full blur-xl animate-pulse"></div>
+                    <Trophy className="w-24 h-24 text-yellow-500 relative animate-bounce-slow" fill="#EAB308" />
+                  </div>
+                </div>
+                
+                {/* Congratulations Header */}
+                <div className="mb-6">
+                  <h2 className="text-6xl font-black bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2 animate-gradient-x">
+                    🎉 Enrollment! 🎉
+                  </h2>
+                  <div className="flex justify-center gap-2">
+                    <Star className="w-8 h-8 text-yellow-400 animate-spin-slow" fill="#FBBF24" />
+                    <Star className="w-8 h-8 text-yellow-400 animate-spin-slow" fill="#FBBF24" style={{ animationDelay: '0.5s' }} />
+                    <Star className="w-8 h-8 text-yellow-400 animate-spin-slow" fill="#FBBF24" style={{ animationDelay: '1s' }} />
+                  </div>
+                </div>
+                
+                {/* Salesperson Name */}
+                <div className="mb-6 bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 rounded-2xl p-6 border-2 border-pink-300">
+                  <p className="text-4xl font-bold text-gray-700 mb-2">Congratulations!</p>
+                  <h3 className="text-6xl font-black bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent animate-pulse-slow">
+                    {latestSale.salesperson}
+                  </h3>
+                </div>
+                
+                {/* Program  */}
+                <div className="bg-white/80 rounded-xl p-5 border-2 border-purple-300 shadow-lg">
+                  <p className="text-3xl font-bold text-gray-700 mb-2">Program:</p>
+                  <p className="text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 bg-clip-text text-transparent">
+                    {latestSale.program}
+                  </p>
+                </div>
+                
+                {/* Celebration Message */}
+                <div className="mt-6">
+                  <p className="text-4xl font-bold text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text animate-bounce">
+                    🎊 Keep up the amazing work! 🎊
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       
       {/* Header with Animation */}
@@ -602,6 +866,87 @@ const SalesDashboard = () => {
           50% { background-position: 100% 50%; }
         }
         
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes popup-bounce {
+          0% { 
+            opacity: 0;
+            transform: scale(0.3) translateY(-100px);
+          }
+          50% {
+            transform: scale(1.05) translateY(10px);
+          }
+          70% {
+            transform: scale(0.95) translateY(-5px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        
+        @keyframes fall-flower {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0.3;
+          }
+        }
+        
+        @keyframes twinkle {
+          0%, 100% {
+            opacity: 0.3;
+            transform: scale(0.5);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.2);
+          }
+        }
+        
+        @keyframes explode {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.5);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(0.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes confetti-burst {
+          0% {
+            transform: translateY(0) rotate(0deg) scale(1);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(150vh) rotate(720deg) scale(0.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes sparkle {
+          0%, 100% {
+            opacity: 0;
+            transform: scale(0) rotate(0deg);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.5) rotate(180deg);
+          }
+        }
+        
         .animate-confetti {
           animation: confetti forwards;
         }
@@ -644,12 +989,31 @@ const SalesDashboard = () => {
         }
         
         .animate-fade-in {
-          animation: fadeIn 2s ease-in;
+          animation: fade-in 0.5s ease-in;
         }
         
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        .animate-popup-bounce {
+          animation: popup-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .animate-fall-flower {
+          animation: fall-flower forwards;
+        }
+        
+        .animate-twinkle {
+          animation: twinkle infinite;
+        }
+        
+        .animate-explode {
+          animation: explode 2s ease-out infinite;
+        }
+        
+        .animate-confetti-burst {
+          animation: confetti-burst forwards;
+        }
+        
+        .animate-sparkle {
+          animation: sparkle 3s ease-in-out infinite;
         }
       `}</style>
       
