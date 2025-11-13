@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-// import { TrendingUp, Target, Award, Trophy, Star, Zap, Sparkles, RefreshCw } from 'lucide-react';
 import { TrendingUp, Target, Trophy, Star, Sparkles, RefreshCw } from 'lucide-react';
-
 
 const SalesDashboard = () => {
   const [data, setData] = useState({
     teams: [],
+    individuals: [],
+    independentSales: 0,
     lastUpdate: new Date().toISOString(),
     loading: true,
     error: null
@@ -18,8 +18,11 @@ const SalesDashboard = () => {
   const TARGET = 10000000; 
   const DEADLINE = new Date('2025-11-30T23:59:59');
   
-  // Google Sheets CSV URL
+  // Google Sheets CSV URLs
   const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-xZM6xxrwv_XRmlLEi5PHnF5JX6QXloLTKk9HlH5WKgX08KESJFzBEbPPWtmOuBHmq-Gf4Evdusm3/pub?gid=0&single=true&output=csv';
+  
+  // Individual Sales CSV URL
+  const INDIVIDUAL_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTr8BTA9HBgjurHo5H88_1uhm-cSkGuXTDYckX2-OEam0dsTstCjognbDucJYO0_J12yXq2R-Glz_C/pub?output=csv';
   
   const blueGradients = [
     'from-blue-400 via-blue-500 to-blue-600',
@@ -38,36 +41,74 @@ const SalesDashboard = () => {
     try {
       setData(prev => ({ ...prev, loading: true, error: null }));
       
-      const response = await fetch(SHEET_CSV_URL);
-      const csvText = await response.text();
+      // Fetch team data
+      const teamResponse = await fetch(SHEET_CSV_URL);
+      const teamCsvText = await teamResponse.text();
       
-      // Parse CSV (simple parser for 2 columns)
-      const lines = csvText.trim().split('\n');
+      // Parse team CSV
+      const teamLines = teamCsvText.trim().split('\n');
       const teams = [];
+      let independentSales = 0;
       
-      // Skip header row and parse data rows
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
+      for (let i = 1; i < teamLines.length; i++) {
+        const line = teamLines[i].trim();
         if (!line) continue;
         
-        // Split by comma, handling quoted values
-        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        if (matches && matches.length >= 2) {
-          const name = matches[0].replace(/^"|"$/g, '').trim();
-          const amountStr = matches[1].replace(/^"|"$/g, '').trim();
+        // Split by comma, handling empty first column
+        const parts = line.split(',');
+        
+        if (parts.length >= 2) {
+          const name = parts[0].replace(/^"|"$/g, '').trim();
+          const amountStr = parts[1].replace(/^"|"$/g, '').trim();
           const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
           
-          if (name && !isNaN(amount) && amount > 0) {
-            teams.push({ name, amount });
+          if (!isNaN(amount) && amount > 0) {
+            if (!name || name === '') {
+              // Empty team name - this is Independent Sales
+              independentSales = amount;
+            } else {
+              // Regular team entry
+              teams.push({ name, amount });
+            }
           }
         }
       }
       
-      // Sort by amount in descending order
       teams.sort((a, b) => b.amount - a.amount);
+      
+      // Fetch individual data
+      const individualResponse = await fetch(INDIVIDUAL_SHEET_CSV_URL);
+      const individualCsvText = await individualResponse.text();
+      
+      // Parse individual CSV (columns: Person Name, Amount, Photo URL)
+      const individualLines = individualCsvText.trim().split('\n');
+      const individuals = [];
+      
+      for (let i = 1; i < individualLines.length; i++) {
+        const line = individualLines[i].trim();
+        if (!line) continue;
+        
+        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        if (matches && matches.length >= 3) {
+          const name = matches[0].replace(/^"|"$/g, '').trim();
+          const amountStr = matches[1].replace(/^"|"$/g, '').trim();
+          const photoUrl = matches[2].replace(/^"|"$/g, '').trim();
+          const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+          
+          if (name && !isNaN(amount) && amount > 0 && photoUrl) {
+            individuals.push({ name, amount, photoUrl });
+          }
+        }
+      }
+      
+      // Sort individuals by amount and get top 3
+      individuals.sort((a, b) => b.amount - a.amount);
+      const topIndividuals = individuals.slice(0, 3);
       
       setData({
         teams,
+        individuals: topIndividuals,
+        independentSales,
         lastUpdate: new Date().toISOString(),
         loading: false,
         error: null
@@ -89,8 +130,9 @@ const SalesDashboard = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // Calculate totals
-  const totalAmount = data.teams.reduce((sum, team) => sum + team.amount, 0);
+  // Calculate totals including Independent Sales
+  const teamTotal = data.teams.reduce((sum, team) => sum + team.amount, 0);
+  const totalAmount = teamTotal + data.independentSales;
   const totalPercent = (totalAmount / TARGET) * 100;
   const topPerformer = data.teams[0];
   
@@ -196,8 +238,8 @@ const SalesDashboard = () => {
           <div className="w-96 h-96 bg-blue-400 rounded-full blur-3xl opacity-20 animate-pulse-slow"></div>
         </div>
         <div className="relative">
-          <h1 className="text-8xl md:text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
-            ProTouch
+          <h1 className="text-6xl md:text-5xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl animate-gradient-x">
+            PROTOUCH
           </h1>
           <div className="flex items-center justify-center gap-2 mt-2">
             <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
@@ -424,6 +466,98 @@ const SalesDashboard = () => {
         </div>
       </div>
       
+      {/* Top 3 Individual Performers - Full Width Row */}
+      {data.individuals && data.individuals.length > 0 && (
+        <div className="mb-3">
+          <div className="text-center mb-4">
+            <h2 className="text-4xl font-black bg-gradient-to-r from-blue-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent flex items-center justify-center gap-3">
+              <Star className="w-8 h-8 text-yellow-500 animate-bounce-slow" fill="#EAB308" />
+              Top 3 Counsellor 
+              <Star className="w-8 h-8 text-yellow-500 animate-bounce-slow" fill="#EAB308" />
+            </h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-5xl mx-auto">
+            {data.individuals.map((person, index) => {
+              const cardStyles = [
+                {
+                  bg: 'bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-100',
+                  border: 'border-yellow-400',
+                  glowColor: 'shadow-yellow-400',
+                  textGradient: 'from-yellow-700 via-amber-600 to-yellow-800',
+                  ringGradient: 'from-yellow-400 via-amber-500 to-yellow-600'
+                },
+                {
+                  bg: 'bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200',
+                  border: 'border-slate-400',
+                  glowColor: 'shadow-slate-400',
+                  textGradient: 'from-slate-700 via-gray-600 to-slate-800',
+                  ringGradient: 'from-slate-400 via-gray-500 to-slate-600'
+                },
+                {
+                  bg: 'bg-gradient-to-br from-orange-50 via-amber-100 to-orange-200',
+                  border: 'border-orange-400',
+                  glowColor: 'shadow-orange-400',
+                  textGradient: 'from-orange-700 via-amber-700 to-orange-800',
+                  ringGradient: 'from-orange-400 via-amber-500 to-orange-600'
+                }
+              ];
+              
+              const style = cardStyles[index];
+              
+              return (
+                <div
+                  key={person.name}
+                  className={`group relative ${style.bg} rounded-2xl p-4 border-2 ${style.border} overflow-hidden hover:scale-105 transition-all duration-500 animate-slide-in ${style.glowColor} shadow-lg`}
+                  style={{ animationDelay: `${index * 0.2}s` }}
+                >
+                  {/* Decorative Background Elements */}
+                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/20 rounded-full blur-2xl"></div>
+                  <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-white/20 rounded-full blur-2xl"></div>
+                  
+                  <div className="relative z-10 flex items-center gap-3">
+                    {/* Medal on Left */}
+                    <div className="flex-shrink-0">
+                      <div className={`text-5xl ${index === 0 ? 'animate-bounce-slow' : ''}`}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                      </div>
+                    </div>
+                    
+                    {/* Photo with Animated Glow Ring */}
+                    <div className="flex-shrink-0 relative">
+                      <div className="absolute inset-0 rounded-full animate-spin-slow">
+                        <div className={`w-20 h-20 rounded-full bg-gradient-to-r ${style.ringGradient} opacity-75 blur-sm`}></div>
+                      </div>
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-3 border-white shadow-xl group-hover:scale-110 transition-all duration-500">
+                        <img 
+                          src={person.photoUrl} 
+                          alt={person.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.name)}&size=80&background=3B82F6&color=fff&bold=true`;
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-2xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent truncate`}>
+                        {person.name}
+                      </div>
+                      <div className={`text-2xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent`}>
+                        {formatCurrency(person.amount)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      
       <style>{`
         @keyframes slide-in {
           from {
@@ -518,10 +652,10 @@ const SalesDashboard = () => {
           to { opacity: 1; }
         }
       `}</style>
-           <footer className="bg-[#001f4d] text-white text-center py-3 text-sm fixed bottom-0 left-0 w-full">
-             © 2025 Protouchpro Services Private Limited — All Rights Reserved
-           </footer>
-
+      
+      <footer className="bg-[#001f4d] text-white text-center py-3 text-sm fixed bottom-0 left-0 w-full">
+        © 2025 Protouchpro Services Private Limited — All Rights Reserved
+      </footer>
     </div>
   );
 };
