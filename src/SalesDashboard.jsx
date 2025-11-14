@@ -734,7 +734,7 @@ const SalesDashboard = () => {
       {data.individuals && data.individuals.length > 0 && (
         <div className="mb-3">
           <div className="text-center mb-4">
-            <h2 className="text-4xl font-black bg-gradient-to-r from-blue-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent flex items-center justify-center gap-3">
+            <h2 className="text-5xl font-black bg-gradient-to-r from-blue-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent flex items-center justify-center gap-3">
               <Star className="w-8 h-8 text-yellow-500 animate-bounce-slow" fill="#EAB308" />
               Top 3 Counsellor 
               <Star className="w-8 h-8 text-yellow-500 animate-bounce-slow" fill="#EAB308" />
@@ -807,10 +807,10 @@ const SalesDashboard = () => {
                     
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <div className={`text-2xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent truncate`}>
+                      <div className={`text-4xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent truncate`}>
                         {person.name}
                       </div>
-                      <div className={`text-2xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent`}>
+                      <div className={`text-3xl font-black bg-gradient-to-r ${style.textGradient} bg-clip-text text-transparent`}>
                         {formatCurrency(person.amount)}
                       </div>
                     </div>
